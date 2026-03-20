@@ -1,0 +1,121 @@
+// ============================================
+// servidor.js — Proxy para Gemini API (GRATIS)
+// Ejecuta: node servidor.js
+// ============================================
+
+const http  = require('http');
+const https = require('https');
+
+// ⚠️ PON AQUÍ TU API KEY DE GOOGLE GEMINI
+// Consíguela GRATIS (sin tarjeta) en: https://aistudio.google.com/apikey
+const GEMINI_API_KEY = 'AIzaSy-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+
+// Modelo gratuito con más límite: 1.000 peticiones/día gratis
+const GEMINI_MODEL = 'gemini-2.5-flash-lite-preview-06-17';
+
+const PORT = 3000;
+
+const SYSTEM_PROMPT = `Eres el asistente virtual de Elisa GR, psicóloga colegiada en Cádiz (AN-10174).
+Ayudas a los visitantes de psicologocadiz.es de forma cálida y profesional.
+
+SERVICIOS:
+- Terapia Infantojuvenil: conducta, habilidades sociales, ansiedad escolar, sueño, alimentación, autoestima.
+- Terapia de Adultos: ansiedad, estrés, estado de ánimo, sueño, autoestima, trastornos adaptativos.
+- Talleres psicoeducativos en grupo.
+
+MODALIDAD: Presencial en Cádiz y online por videollamada.
+UBICACIÓN: Plaza San Severiano 1, local Vidalogía, Cádiz.
+CONTACTO: Tel 722 599 226 · info@psicologocadiz.es · https://www.psicologocadiz.es/contacto/
+
+REGLAS:
+- Sé siempre empático, cálido y cercano.
+- Nunca des diagnósticos ni recomendaciones clínicas.
+- Si detectas una crisis emocional grave, deriva amablemente al 024.
+- Anima siempre a contactar con Elisa directamente.
+- Responde en español de forma concisa y clara.`;
+
+const server = http.createServer((req, res) => {
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/chat') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+
+    req.on('end', () => {
+      try {
+        const { messages } = JSON.parse(body);
+
+        // Convertir historial al formato de Gemini
+        const contents = messages.map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }));
+
+        const payload = JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: contents,
+          generationConfig: { maxOutputTokens: 800 }
+        });
+
+        const path = `/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+        const options = {
+          hostname: 'generativelanguage.googleapis.com',
+          path: path,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload)
+          }
+        };
+
+        const apiReq = https.request(options, (apiRes) => {
+          let data = '';
+          apiRes.on('data', chunk => { data += chunk; });
+          apiRes.on('end', () => {
+            try {
+              const parsed = JSON.parse(data);
+              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text
+                || 'Lo siento, no pude obtener respuesta. Contacta con Elisa en el 722 599 226.';
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ reply: text }));
+            } catch(e) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Error al parsear respuesta de Gemini' }));
+            }
+          });
+        });
+
+        apiReq.on('error', (e) => {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: e.message }));
+        });
+
+        apiReq.write(payload);
+        apiReq.end();
+
+      } catch(e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Petición inválida' }));
+      }
+    });
+
+  } else {
+    res.writeHead(404);
+    res.end('No encontrado');
+  }
+});
+
+server.listen(PORT, () => {
+  console.log(`✅ Servidor Gemini arrancado en http://localhost:${PORT}`);
+  console.log(`   Modelo: ${GEMINI_MODEL} (GRATIS)`);
+});
