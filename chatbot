@@ -5,7 +5,7 @@ const GEMINI_API_KEY = 'AIzaSyDl5SRUk_ySl83vascpbQT0UWmnvTMCE_0';
 const GEMINI_MODEL   = 'gemini-2.5-flash-lite-preview-06-17';
 const PORT           = 3000;
 
-const DEFAULT_SYSTEM = 'Eres el asistente virtual de Elisa GR, psicologa colegiada en Cadiz (AN-10174). Ayudas a los visitantes de psicologocadiz.es de forma calida y profesional. Responde siempre en espanol de forma concisa. Nunca des diagnosticos. Si detectas crisis grave, deriva al 024.';
+const DEFAULT_SYSTEM = 'Eres el asistente virtual de Elisa GR, psicologa colegiada en Cadiz (AN-10174). Ayudas a los visitantes de psicologocadiz.es de forma calida y profesional. Responde siempre en espanol de forma concisa. Nunca des diagnosticos. Si detectas crisis grave, deriva al 112.';
 
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
