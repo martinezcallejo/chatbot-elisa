@@ -22,7 +22,6 @@ const parsed = JSON.parse(body);
 const messages = parsed.messages || [];
 const systemPrompt = parsed.system || DEFAULT_SYSTEM;
 
-```
     const contents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
@@ -59,7 +58,6 @@ const systemPrompt = parsed.system || DEFAULT_SYSTEM;
     apiReq.end();
   } catch(e) { res.writeHead(400); res.end(JSON.stringify({ error: 'Petición inválida' })); }
 });
-```
 
 } else { res.writeHead(404); res.end(); }
 });
